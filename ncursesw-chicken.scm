@@ -839,7 +839,7 @@ EOF
 (def err mvwvline win int int chtype int)
 
 
-;;; ncursesw specific
+;;;ncursesw specific
 (foreign-code "
 setlocale(LC_ALL,\"\");
 setlocale(LC_NUMERIC,\"C\");
