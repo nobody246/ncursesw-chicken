@@ -1,16 +1,17 @@
-;;;; ncursesw.scm updated from ncurses.scm
+;;;; ncursesw-chicken.scm updated from ncurses.scm
 
 (declare
  (fixnum)
  (disable-interrupts)
  (hide check to-chtype)
  ;;;ncursesw specific 
- (foreign-declare "#define _XOPEN_SOURCE 700")
+ (foreign-declare "#define _XOPEN_SOURCE 700"); adding this definition stops gcc
+                                              ; from complaining that wget_wch
+                                              ; and get_wch are implicitly
+                                              ; declared
  (foreign-declare "#include <ncursesw/ncurses.h>")
  (foreign-declare "#include <locale.h>")
- (foreign-declare "char* b;")
- ;;panel specfic
- (foreign-declare "#include <panel.h>"))
+ (foreign-declare "char* b;"))
 
 (require-library easyffi)
 (require-library extras)
@@ -839,7 +840,7 @@ EOF
 (def err mvwvline win int int chtype int)
 
 
-;;;ncursesw specific
+;;; ncursesw specific
 (foreign-code "
 setlocale(LC_ALL,\"\");
 setlocale(LC_NUMERIC,\"C\");
