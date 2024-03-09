@@ -1,4 +1,4 @@
-;;;; ncursesw-chicken.scm updated from ncurses.scm
+;;;; ncursesw.scm updated from ncurses.scm
 
 (declare
  (fixnum)
@@ -347,7 +347,7 @@
   ;;;ncursesw specific
   get-wch
   wget-wch
-  endwin-w)  
+  dealloc-wchar)  
 
   (import scheme)
   (import chicken)
@@ -867,7 +867,7 @@ wctomb(b, c);
 C_return(b);
 "))
 
-(define dealloc-b
+(define dealloc-wchar
   (foreign-lambda*
    void ()
    "
@@ -875,9 +875,6 @@ if(b)
 {
    free(b);
    b = NULL;
-}"))
-(define (endwin-w)
-  (endwin)
-  (dealloc-b)))
+}")))
 
  
