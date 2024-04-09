@@ -11,7 +11,8 @@
                                               ; declared
  (foreign-declare "#include <ncursesw/ncurses.h>")
  (foreign-declare "#include <locale.h>")
- (foreign-declare "char* b;"))
+ (foreign-declare "char* b;
+                   wchar_t* wc_str = NULL;"))
 
 (require-library easyffi)
 (require-library extras)
@@ -345,6 +346,8 @@
   use_default_colors
   assume_default_colors
   ;;;ncursesw specific
+  mvwaddnwstr
+  mvwadd-wch
   get-wch
   wget-wch
   dealloc-wchar)  
@@ -846,12 +849,57 @@ setlocale(LC_ALL,\"\");
 setlocale(LC_NUMERIC,\"C\");
 b = malloc(4 * sizeof(char));")
 
+(define mvwaddnwstr
+  (foreign-lambda*
+   integer ((c-pointer w)
+            (integer y)
+            (integer x)
+            (c-string s)
+            (integer n))
+   "
+if (wc_str)
+ {
+   free(wc_str);
+   wc_str = NULL;
+ }
+if (!w || !s)
+ {C_return(0);}
+wc_str = (wchar_t*) malloc((strlen(s) + 1) * sizeof(wchar_t));
+if (!wc_str)
+ {C_return(0);}
+mbstowcs(wc_str, s, n);
+C_return(mvwaddnwstr(w, y, x, wc_str, n));
+"))
+
+(define mvwadd-wch
+  (foreign-lambda*
+   integer ((c-pointer w)
+            (integer y)
+            (integer x)
+            (c-string s))
+   "
+if (wc_str)
+ {
+   free(wc_str);
+   wc_str = NULL;
+ }
+if (!w || !s)
+ {C_return(0);}
+wc_str = (wchar_t*) malloc((strlen(s) + 1) * sizeof(wchar_t));
+if (!wc_str)
+ {C_return(0);}
+mbstowcs(wc_str, s, strlen(s) + 1);
+cchar_t p;
+setcchar(&p, wc_str, 0, 0, NULL);
+C_return(mvwadd_wch(w, y, x, &p));
+"))
+
 (define get-wch
   (foreign-lambda*
    c-string ()
    "
 memset(b, 0, 4);
-wchar_t c = '\\0';
+wchar_t c;
 int k = get_wch(&c);
 wctomb(b, c);
 C_return(b);"))
@@ -861,7 +909,7 @@ C_return(b);"))
    c-string ((c-pointer w))
    "
 memset(b, 0, 4);
-wchar_t c = '\\0';
+wchar_t c;
 int k = wget_wch(w, &c);
 wctomb(b, c);
 C_return(b);
@@ -871,6 +919,11 @@ C_return(b);
   (foreign-lambda*
    void ()
    "
+if (wc_str)
+ {
+   free(wc_str);
+   wc_str = NULL;
+ }
 if(b)
 {
    free(b);
