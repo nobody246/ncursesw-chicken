@@ -847,7 +847,7 @@ EOF
 (foreign-code "
 setlocale(LC_ALL,\"\");
 setlocale(LC_NUMERIC,\"C\");
-b = malloc(4 * sizeof(char));")
+b = malloc(5 * sizeof(char));")
 
 (define mvwaddnwstr
   (foreign-lambda*
@@ -898,7 +898,7 @@ C_return(mvwadd_wch(w, y, x, &p));
   (foreign-lambda*
    c-string ()
    "
-memset(b, 0, 4);
+memset(b, 0, 5);
 wchar_t c;
 int k = get_wch(&c);
 wctomb(b, c);
@@ -908,7 +908,7 @@ C_return(b);"))
   (foreign-lambda*
    c-string ((c-pointer w))
    "
-memset(b, 0, 4);
+memset(b, 0, 5);
 wchar_t c;
 int k = wget_wch(w, &c);
 wctomb(b, c);
