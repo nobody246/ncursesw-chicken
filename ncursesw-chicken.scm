@@ -12,7 +12,11 @@
  (foreign-declare "#include <ncursesw/ncurses.h>")
  (foreign-declare "#include <locale.h>")
  (foreign-declare "char* b;
-                   wchar_t* wc_str = NULL;"))
+                   wchar_t* wc_str = NULL;
+                   attr_t txt_attr;
+                   int tc;
+                   short fg_col, bg_col;
+                   WINDOW *mainWin;"))
 
 (require-library easyffi)
 (require-library extras)
@@ -348,8 +352,16 @@
   ;;;ncursesw specific
   mvwaddnwstr
   mvwadd-wch
+  d-attr
+  s-attr
+  remove-attrs
   get-wch
   wget-wch
+  get-scr
+  set-win-col
+  unset-win-col
+  set-win-bg-col
+  set-txt-col
   dealloc-wchar)  
 
   (import scheme)
@@ -845,9 +857,20 @@ EOF
 
 ;;; ncursesw specific
 (foreign-code "
+mainWin=initscr();
+start_color();
+for (fg_col = 0; fg_col < 16; ++fg_col)
+ {
+   for (bg_col = 0; bg_col < 16; ++bg_col)
+    {init_pair( fg_col * 16 + bg_col, fg_col, bg_col);}
+ }
 setlocale(LC_ALL,\"\");
 setlocale(LC_NUMERIC,\"C\");
-b = malloc(5 * sizeof(char));")
+b = malloc(5 * sizeof(char));") 
+(define get-scr
+  (foreign-lambda*
+   c-pointer ()
+   "C_return(mainWin);"))
 
 (define mvwaddnwstr
   (foreign-lambda*
@@ -871,6 +894,45 @@ mbstowcs(wc_str, s, n);
 C_return(mvwaddnwstr(w, y, x, wc_str, n));
 "))
 
+(define d-attr
+  (foreign-lambda*
+   void ((integer at))
+   "txt_attr=at;"))
+
+(define s-attr
+  (foreign-lambda*
+   void ((integer at))
+   "txt_attr|=at;"))
+
+(define remove-attrs
+  (foreign-lambda*
+   void ()
+   "txt_attr=NULL;"))
+
+(define set-win-col
+  (foreign-lambda*
+   void ((c-pointer w)
+         (integer col))
+   "wattr_on(w, COLOR_PAIR(col), (void*) 0);"))
+
+(define unset-win-col
+  (foreign-lambda*
+   void ((c-pointer w)
+         (integer col))
+   "wattr_off(w, COLOR_PAIR(col), (void*) 0);"))
+
+(define set-win-bg-col
+  (foreign-lambda*
+   void ((c-pointer w)
+         (integer col))
+   "wbkgd(w, COLOR_PAIR(col));"))
+
+
+(define set-txt-col
+  (foreign-lambda*
+   void ((short fg) (short bg))
+   "tc= fg * 16 + bg;"))
+
 (define mvwadd-wch
   (foreign-lambda*
    integer ((c-pointer w)
@@ -890,7 +952,7 @@ if (!wc_str)
  {C_return(0);}
 mbstowcs(wc_str, s, strlen(s) + 1);
 cchar_t p;
-setcchar(&p, wc_str, 0, 0, NULL);
+setcchar(&p, wc_str, txt_attr, tc, (void*) 0);
 C_return(mvwadd_wch(w, y, x, &p));
 "))
 
@@ -925,9 +987,10 @@ if (wc_str)
    wc_str = NULL;
  }
 if(b)
-{
+ {
    free(b);
    b = NULL;
-}")))
+ }
+")))
 
  
