@@ -9,14 +9,17 @@
                                               ; from complaining that wget_wch
                                               ; and get_wch are implicitly
                                               ; declared
- (foreign-declare "#include <ncursesw/ncurses.h>")
- (foreign-declare "#include <locale.h>")
- (foreign-declare "char* b;
-                   wchar_t* wc_str = NULL;
-                   attr_t txt_attr;
-                   int tc;
-                   short fg_col, bg_col;
-                   WINDOW *mainWin;"))
+ (foreign-declare "
+#include <ncursesw/ncurses.h>
+#include <locale.h>
+char* b;
+wchar_t* wc_str = NULL;
+attr_t txt_attr;
+int tc;
+short fg_col, bg_col;
+MEVENT event;
+MEVENT* event_ptr = &event;
+WINDOW* main_win;"))
 
 (require-library easyffi)
 (require-library extras)
@@ -362,7 +365,54 @@
   unset-win-col
   set-win-bg-col
   set-txt-col
-  dealloc-wchar)  
+  dealloc-wchar
+  ;;mouse stuff
+  BUTTON1_RELEASED           
+  BUTTON1_PRESSED            
+  BUTTON1_CLICKED            
+  BUTTON1_DOUBLE_CLICKED     
+  BUTTON1_TRIPLE_CLICKED     
+  BUTTON2_RELEASED           
+  BUTTON2_PRESSED            
+  BUTTON2_CLICKED            
+  BUTTON2_DOUBLE_CLICKED     
+  BUTTON2_TRIPLE_CLICKED     
+  BUTTON3_RELEASED           
+  BUTTON3_PRESSED            
+  BUTTON3_CLICKED            
+  BUTTON3_DOUBLE_CLICKED     
+  BUTTON3_TRIPLE_CLICKED     
+  BUTTON4_RELEASED           
+  BUTTON4_PRESSED            
+  BUTTON4_CLICKED            
+  BUTTON4_DOUBLE_CLICKED     
+  BUTTON4_TRIPLE_CLICKED     
+  BUTTON5_RELEASED           
+  BUTTON5_PRESSED            
+  BUTTON5_CLICKED            
+  BUTTON_SHIFT
+  BUTTON_CTRL
+  BUTTON_ALT
+  ALL_MOUSE_EVENTS
+  REPORT_MOUSE_POSITION
+  mousemask
+  getmouse
+  ungetmouse
+  wenclose
+  mouse_trafo
+  wmouse_trafo
+  mouseinterval
+  has_mouse
+  ;;unofficial additions
+  SCROLL_WHEEL_DOWN
+  SCROLL_WHEEL_UP
+  event-pointer
+  event.id
+  event.bstate
+  event.x
+  event.y
+  event.z
+)  
 
   (import scheme)
   (import chicken)
@@ -372,6 +422,8 @@
 
 (define-foreign-variable OK int)
 (define-foreign-variable ERR_ int "ERR")
+
+
 
 (define ERR ERR_)
 
@@ -831,6 +883,40 @@ ___declare(export_constants, yes)
 #define KEY_UNDO	0630		/* undo key */
 #define KEY_MOUSE	0631		/* Mouse event has occurred */
 #define KEY_RESIZE	0632		/* Terminal resize event */
+
+//mouse event values as they function on my 3 button logitech
+#define SCROLL_WHEEL_DOWN          0000
+#define SCROLL_WHEEL_UP            524288
+
+//mouse events I've seen documented
+#define BUTTON1_RELEASED           0001
+#define BUTTON1_PRESSED            0002
+#define BUTTON1_CLICKED            0004
+#define BUTTON1_DOUBLE_CLICKED     0008
+#define BUTTON1_TRIPLE_CLICKED     0016
+#define BUTTON2_RELEASED           0032
+#define BUTTON2_PRESSED            0064
+#define BUTTON2_CLICKED            0128
+#define BUTTON2_DOUBLE_CLICKED     0256
+#define BUTTON2_TRIPLE_CLICKED     0512
+#define BUTTON3_RELEASED           1024
+#define BUTTON3_PRESSED            2048
+#define BUTTON3_CLICKED            4096
+#define BUTTON3_DOUBLE_CLICKED     8192
+#define BUTTON3_TRIPLE_CLICKED     16384
+#define BUTTON4_RELEASED           32768
+#define BUTTON4_PRESSED            65536
+#define BUTTON4_CLICKED            131072
+#define BUTTON4_DOUBLE_CLICKED     262144
+#define BUTTON4_TRIPLE_CLICKED     524288
+#define BUTTON5_RELEASED           1048576
+#define BUTTON5_PRESSED            2097152
+#define BUTTON5_CLICKED            4194304
+#define BUTTON_SHIFT               33554432
+#define BUTTON_CTRL                16777216
+#define BUTTON_ALT                 67108864
+#define ALL_MOUSE_EVENTS           134217727
+#define REPORT_MOUSE_POSITION      134217728
 EOF
 )
 
@@ -855,9 +941,40 @@ EOF
 (def err mvwvline win int int chtype int)
 
 
+;;; mouse specific
+(def unsigned-short has_mouse)
+(def long mousemask long c-pointer)
+(def long  getmouse  c-pointer)
+(def long  ungetmouse c-pointer)
+(def bool wenclose   win int int)
+(def bool mouse_trafo c-pointer c-pointer bool)
+(def bool wmouse_trafo win c-pointer c-pointer bool)
+(def int  mouseinterval int)
+(define event-pointer (foreign-value "event_ptr" c-pointer))
+(define event.id
+  (foreign-lambda*
+   short ()
+   "C_return(event.id);"))
+(define event.bstate
+  (foreign-lambda*
+   unsigned-long ()
+   "C_return(event.bstate);"))
+(define event.x
+  (foreign-lambda*
+   integer ()
+   "C_return(event.x);"))
+(define event.y
+  (foreign-lambda*
+   integer ()
+   "C_return(event.y);"))
+(define event.z
+  (foreign-lambda*
+   integer ()
+   "C_return(event.z);"))
+
 ;;; ncursesw specific
 (foreign-code "
-mainWin=initscr();
+main_win=initscr();
 start_color();
 for (fg_col = 0; fg_col < 16; ++fg_col)
  {
@@ -870,7 +987,7 @@ b = malloc(5 * sizeof(char));")
 (define get-scr
   (foreign-lambda*
    c-pointer ()
-   "C_return(mainWin);"))
+   "C_return(main_win);"))
 
 (define mvwaddnwstr
   (foreign-lambda*
@@ -907,7 +1024,7 @@ C_return(mvwaddnwstr(w, y, x, wc_str, n));
 (define remove-attrs
   (foreign-lambda*
    void ()
-   "txt_attr=NULL;"))
+   "txt_attr=(attr_t) {0};"))
 
 (define set-win-col
   (foreign-lambda*
